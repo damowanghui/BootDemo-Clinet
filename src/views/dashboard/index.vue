@@ -1,7 +1,8 @@
 <template>
   <div class="dashboard-container">
-    <a href="https://github.com/Heeexy/SpringBoot-Shiro-Vue" target="_blank"><img style="margin: 40px"
-      src="http://img.heeexy.com/github.png"></a>
+    <img style="width: 100%; height: 100%"
+      src="../../image/N23zpP_v5bA.jpg">
+
   </div>
 </template>
 <script>

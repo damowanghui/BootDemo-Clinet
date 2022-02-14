@@ -61,5 +61,21 @@ export const asyncRouterMap = [
       },
     ]
   },
+  {
+    path: '/file',
+    component: Layout,
+    redirect: '/file/',
+    name: '',
+    meta: {title: '文件', icon: 'table'},
+    children: [
+      {
+        path: 'file',
+        name: '文件',
+        component: _import('file/file'),
+        meta: {title: '文件', icon: 'example'},
+        menu: 'file'
+      }
+    ]
+  },
   {path: '*', redirect: '/404', hidden: true}
 ]
