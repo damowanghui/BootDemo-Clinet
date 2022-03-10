@@ -3,8 +3,7 @@
     <div class="filter-container">
       <el-form>
         <el-form-item>
-          <el-button type="primary" icon="plus" @click="showCreate" v-permission="'article:add'">添加
-          </el-button>
+          <el-button type="primary" icon="plus" @click="showUploadFile" v-permission="'file:upload'">上传</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -15,12 +14,12 @@
           <span v-text="getIndex(scope.$index)"> </span>
         </template>
       </el-table-column>
-      <el-table-column align="center" prop="content" label="文章" style="width: 60px;"></el-table-column>
-      <el-table-column align="center" prop="createTime" label="创建时间" width="170"/>
-      <el-table-column align="center" prop="updateTime" label="最近修改时间" width="170"/>
+      <el-table-column align="center" prop="fileName" label="文件名" style="width: 60px;"></el-table-column>
+      <el-table-column align="center" prop="createUser" label="上传人" width="170"/>
+      <el-table-column align="center" prop="createTime" label="上传时间" width="170"/>
       <el-table-column align="center" label="管理" width="200" >
         <template slot-scope="scope">
-          <el-button type="primary" icon="edit" @click="showUpdate(scope.$index)"  v-permission="'article:update'">修改</el-button>
+          <el-button type="primary" icon="edit" @click="fileDownload(scope.$index)"  v-permission="'file:download'">下载</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -34,22 +33,38 @@
       layout="total, sizes, prev, pager, next, jumper">
     </el-pagination>
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
-      <el-form class="small-space" :model="tempArticle" label-position="left" label-width="60px"
+      <el-form class="small-space" :model="file" label-position="left" label-width="60px"
                style='width: 500px; margin-left:50px;'>
-        <el-form-item label="文章">
-          <el-input type="textarea" style="width:100%" show-word-limit v-model="tempArticle.content"  maxlength="100">
-          </el-input>
+        <el-form-item label="文件">
+          <el-upload
+            style="display:inline-block"
+            class="upload-demo"
+            ref="upload"
+            :action="uploadParam.action"
+            :multiple="uploadParam.multiple"
+            :limit="uploadParam.limit"
+            :auto-upload="uploadParam.autoUpload"
+            :accept="uploadParam.accept"
+            :file-list="uploadParam.fileList"
+            :on-change="handleUploadChange"
+            :on-exceed="handleUploadExceed"
+            :on-remove="handleUploadRemove"
+            >
+            <el-button slot="trigger" size="small" type="primary" plain>选取文件</el-button>
+          </el-upload>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">取 消</el-button>
-        <el-button v-if="dialogStatus==='create'" type="success" @click="createArticle">创 建</el-button>
-        <el-button type="primary" v-else @click="updateArticle">修 改</el-button>
+        <el-button style="margin-left: 10px;" size="small" icon="el-icon-upload2" type="success" @click="submitUpload">上传</el-button>
       </div>
     </el-dialog>
   </div>
 </template>
 <script>
+
+  import {getUploadParam, uploadFileList} from "../../utils/fileUploadParam";
+
   export default {
     data() {
       return {
@@ -58,19 +73,22 @@
         listLoading: false,//数据加载等待动画
         listQuery: {
           pageNum: 1,//页码
-          pageRow: 50,//每页条数
+          pageRow: 10,//每页条数
           name: ''
         },
         dialogStatus: 'create',
         dialogFormVisible: false,
         textMap: {
-          update: '编辑',
-          create: '创建文章'
+          create: '上传文件'
         },
-        tempArticle: {
+        file: {
           id: "",
-          content: ""
-        }
+          fileName: "",
+          createUser: "",
+          createTime: ""
+        },
+        uploadParam: getUploadParam(),
+        fileList: []
       }
     },
     created() {
@@ -79,12 +97,12 @@
     methods: {
       getList() {
         //查询列表
-        if (!this.hasPerm('article:list')) {
+        if (!this.hasPerm('file:list')) {
           return
         }
         this.listLoading = true;
         this.api({
-          url: "/article/listArticle",
+          url: "/file/list",
           method: "get",
           params: this.listQuery
         }).then(data => {
@@ -112,41 +130,52 @@
         //表格序号
         return (this.listQuery.pageNum - 1) * this.listQuery.pageRow + $index + 1
       },
-      showCreate() {
-        //显示新增对话框
-        this.tempArticle.content = "";
+      // 文件相关
+      showUploadFile() {
+        // this.tempArticle.content = "";
         this.dialogStatus = "create"
         this.dialogFormVisible = true
       },
-      showUpdate($index) {
-        //显示修改对话框
-        this.tempArticle.id = this.list[$index].id;
-        this.tempArticle.content = this.list[$index].content;
-        this.dialogStatus = "update"
+      handleUploadChange(file, fileList) {
+        this.uploadParam.fileList = fileList
+      },
+      // 超出文件限制提示
+      handleUploadExceed() {
+        this.$message.warning("文件不能超过" + this.uploadParam.limit + "个哦")
+      },
+      handleUploadRemove(file, fileList) {
+        this.uploadParam.fileList = fileList
+      },
+      submitUpload() {
+        let uploadForm = new FormData()
+        this.uploadParam.fileList.forEach((val, index) => {
+          uploadForm.append("multipartFiles", val.raw)
+        })
+
+        uploadFileList(uploadForm).then(res => {
+          if (res.data.code === '200'){
+            this.$message.success("上传文件成功")
+          } else {
+            this.$message.error(res.data.msg)
+          }
+        })
+        this.fileList = []
+        this.uploadParam.fileList = []
+        this.dialogFormVisible = false
+        this.getList()
+      },
+      fileDownload(index) {
+        console.log(index)
+        console.log(this.list[index].id)
+
+      },
+      // end
+      showCreate() {
+        //显示新增对话框
+        // this.tempArticle.content = "";
+        this.dialogStatus = "create"
         this.dialogFormVisible = true
-      },
-      createArticle() {
-        //保存新文章
-        this.api({
-          url: "/article/addArticle",
-          method: "post",
-          data: this.tempArticle
-        }).then(() => {
-          this.getList();
-          this.dialogFormVisible = false
-        })
-      },
-      updateArticle() {
-        //修改文章
-        this.api({
-          url: "/article/updateArticle",
-          method: "post",
-          data: this.tempArticle
-        }).then(() => {
-          this.getList();
-          this.dialogFormVisible = false
-        })
-      },
+      }
     }
   }
 </script>
