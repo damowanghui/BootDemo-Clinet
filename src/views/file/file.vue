@@ -63,7 +63,7 @@
 </template>
 <script>
 
-  import {getUploadParam, uploadFileList} from "../../utils/fileUploadParam";
+  import {downloadFile, getUploadParam, uploadFileList} from "../../utils/fileUploadParam";
 
   export default {
     data() {
@@ -165,9 +165,8 @@
         this.getList()
       },
       fileDownload(index) {
-        console.log(index)
-        console.log(this.list[index].id)
-
+        let fileId = this.list[index].id
+        downloadFile(fileId)
       },
       // end
       showCreate() {
